@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets / local config
+.env
+*.key
+*.pem
+
+# Generated audit artifacts (keep the templates, not the runs)
+reports/*.md
+reports/*.html
+reports/*.json
+!reports/.gitkeep
+
+# Logs (traceability lives in committed markdown, not raw logs)
+logs/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
