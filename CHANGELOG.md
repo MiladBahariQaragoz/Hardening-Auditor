@@ -14,6 +14,14 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
 - Maintained docs: `CHANGELOG.md`, `docs/DECISIONS.md`, `docs/CONTROLS.md`,
   `docs/THREAT-MODEL.md`.
 - `reports/` directory for generated audit artifacts (git-ignored output).
+- **Package skeleton & engine (Phase 0):** the `auditor` package with `models` (Control /
+  Finding / CheckResult / AuditReport / Severity / Status), the `Host` abstraction
+  (`LocalHost` + `FakeHost`), a self-registering control `registry` with the `@control`
+  decorator, the discover-and-run `engine`, the `argparse` CLI (`audit` / `fix`), and
+  `console` + `json` reporters. `python -m auditor audit` runs end-to-end.
+- `pyproject.toml` (stdlib-only runtime; `ruff` + `pytest` dev extras) and a `tests/` suite
+  covering the engine, registry, and reporters (8 tests, all OS-independent via `FakeHost`).
+- ADR-0004: checks read the system through an injected `Host`, never directly.
 
 ### Changed
 - Rewrote `README.md` as a product-facing project showcase (what the tool does, quick start,

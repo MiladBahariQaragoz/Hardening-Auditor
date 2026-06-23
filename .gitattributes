@@ -1,0 +1,10 @@
+# Normalise line endings to LF in the repo. This tool runs on Linux hosts; CRLF in a
+# Python source or (later) shell script copied to a target would be at best noisy and at
+# worst broken. Developers on Windows keep CRLF in their working copy; git stores LF.
+* text=auto eol=lf
+
+# Binary types git should never touch.
+*.png binary
+*.jpg binary
+*.gz binary
+*.zip binary

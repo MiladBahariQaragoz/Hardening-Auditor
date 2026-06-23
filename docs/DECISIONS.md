@@ -37,3 +37,19 @@ add a new ADR that supersedes the old one (don't edit history) — that is what 
   it adds value). The ID flows from `docs/CONTROLS.md` → check module → report line, unbroken.
 - **Consequences:** Slightly more upfront research per control; full **traceability** from CV
   bullet to source code.
+
+## ADR-0004 — Checks read the system through an injected `Host`, never directly
+- **Date:** 2026-06-23
+- **Status:** Accepted
+- **Context:** Checks need to read config files, file permissions, and command output from a
+  Linux host. If each check calls `open()`/`subprocess` directly, the suite can only run on a
+  real Linux box, the tool can only audit *localhost*, and every system access is an untestable
+  side effect. Development happens on a Windows machine, so this would block testing entirely.
+- **Decision:** Introduce a narrow `Host` protocol (`read_text`, `stat`, `run`) in
+  `auditor/host.py`. Checks receive a `Host` and ask it for facts. `LocalHost` is the only
+  OS-touching implementation (runs *on* the target); `FakeHost` (in `tests/`) serves canned
+  files/metadata/command output. Unix-only imports (`pwd`/`grp`) are deferred into methods so
+  the module imports cleanly on Windows.
+- **Consequences:** The full test suite runs on any OS with no Linux required; a future
+  `RemoteHost` (audit over SSH) drops in without touching a single check; every system access
+  flows through one loggable surface. Cost: one extra indirection and a small fake to maintain.
