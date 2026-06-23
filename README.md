@@ -81,7 +81,7 @@ docs/                 # control catalogue, threat model, decision log
 ## Roadmap
 
 - [ ] 30+ CIS controls implemented and mapped to control IDs (catalogue seeded in `docs/CONTROLS.md`)
-- [ ] Markdown / HTML / JSON reporters
+- [x] Markdown / HTML / JSON reporters (plus a severity-grouped console summary)
 - [ ] `--dry-run` and `--fix` remediation with backups
 - [ ] Before/after demo on a default vs. hardened VM, with screenshots
 - [ ] Comparison of results against [Lynis](https://cisofy.com/lynis/) and OpenSCAP

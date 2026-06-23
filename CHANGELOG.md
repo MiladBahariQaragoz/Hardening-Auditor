@@ -26,6 +26,11 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   (`auditor/checks/ssh_permit_root_login.py`), with a shared `_ssh` helper that resolves
   sshd's effective config via `sshd -T` and falls back to parsing `/etc/ssh/sshd_config`
   (first-value-wins, per `sshd_config(5)`). 7 tests cover pass/fail/skip and the fallback.
+- **Reporters (Phase 2):** `markdown` (score + per-severity summary + findings tables +
+  remediation checklist) and self-contained `html` (inline CSS, HTML-escaped) reporters,
+  alongside the existing `console` and `json`. Shared `_common` helper guarantees identical
+  grouping/ordering across formats. `--report md` is an alias for markdown; markdown/html
+  default their output to `reports/<host>-<date>.<ext>`. Reporter tests extended to 11.
 
 ### Changed
 - Rewrote `README.md` as a product-facing project showcase (what the tool does, quick start,

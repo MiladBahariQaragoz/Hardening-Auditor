@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ..models import AuditReport, CheckResult, Severity, Status
-from ..registry import id_sort_key
+from ..models import AuditReport, CheckResult, Status
+from ._common import grouped
 
 # Fixed-width tags so columns line up regardless of status.
 _TAG = {
@@ -19,22 +19,16 @@ def render(report: AuditReport) -> str:
     lines.append(f"Linux Hardening Audit — {report.host} — {report.timestamp}")
     lines.append(f"Score: {report.score}%  ({report.passed} / {report.total} controls passing)")
 
-    for severity in Severity:  # HIGH, MEDIUM, LOW — enum declaration order
-        group = [r for r in report.results if r.control.severity is severity]
-        if not group:
-            continue
-        group.sort(key=lambda r: id_sort_key(r.control.id))
+    for severity, members in grouped(report):
         lines.append("")
         lines.append(severity.value.upper())
-        for r in group:
-            lines.append(_format_line(r))
+        lines.extend(_format_line(r) for r in members)
 
     return "\n".join(lines) + "\n"
 
 
 def _format_line(r: CheckResult) -> str:
-    tag = _TAG[r.status]
-    line = f"  [{tag}] {r.control.id:<8} {r.control.title}"
+    line = f"  [{_TAG[r.status]}] {r.control.id:<8} {r.control.title}"
     detail = _evidence(r)
     if detail:
         line += f"    {detail}"

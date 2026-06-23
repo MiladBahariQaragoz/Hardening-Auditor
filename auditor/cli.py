@@ -16,7 +16,7 @@ from . import __version__
 from .engine import run
 from .host import LocalHost
 from .models import Status
-from .reporters import available, get_reporter
+from .reporters import FILE_EXTENSION, canonical, choices, get_reporter
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,13 +37,15 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument(
         "--report",
         default="console",
-        choices=available(),
-        help="output format (default: console)",
+        choices=choices(),
+        metavar="FORMAT",
+        help="output format: console, json, markdown (md), html (default: console)",
     )
     audit.add_argument(
         "--output",
         type=Path,
-        help="write the report to this file instead of stdout",
+        help="write the report to this file (default: stdout for console/json, "
+        "reports/<host>-<date>.<ext> for markdown/html)",
     )
     audit.set_defaults(func=_cmd_audit)
 
@@ -56,18 +58,29 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _cmd_audit(args: argparse.Namespace) -> int:
     report = run(LocalHost())
-    rendered = get_reporter(args.report)(report)
+    fmt = canonical(args.report)
+    rendered = get_reporter(fmt)(report)
 
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
-        print(f"wrote {args.report} report to {args.output}")
+    output = args.output or _default_output(fmt, report)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered, encoding="utf-8")
+        print(f"wrote {fmt} report to {output}")
     else:
         sys.stdout.write(rendered)
 
     # Exit non-zero if any control failed or errored — useful in CI/pipelines.
     bad = {Status.FAIL, Status.ERROR}
     return 1 if any(r.status in bad for r in report.results) else 0
+
+
+def _default_output(fmt: str, report) -> Path | None:
+    """File-oriented formats land in reports/ by default; console/json go to stdout."""
+    ext = FILE_EXTENSION.get(fmt)
+    if fmt in ("markdown", "html") and ext:
+        date = report.timestamp[:10]  # YYYY-MM-DD from the ISO timestamp
+        return Path("reports") / f"{report.host}-{date}.{ext}"
+    return None
 
 
 def _cmd_fix(args: argparse.Namespace) -> int:

@@ -5,7 +5,14 @@ from __future__ import annotations
 import json as _json
 
 from auditor.models import AuditReport, CheckResult, Control, Finding, Severity, Status
-from auditor.reporters import console, json as json_reporter
+from auditor.reporters import (
+    canonical,
+    console,
+    get_reporter,
+    html as html_reporter,
+    json as json_reporter,
+    markdown as md_reporter,
+)
 
 
 def _report() -> AuditReport:
@@ -46,3 +53,50 @@ def test_json_is_valid_and_sorted_by_id():
     fail = next(r for r in data["results"] if r["id"] == "5.2.8")
     assert fail["status"] == "fail"
     assert fail["remediation"] == "set no"
+
+
+def test_markdown_has_score_summary_and_remediation():
+    out = md_reporter.render(_report())
+    assert "# Linux Hardening Audit — ubuntu-host" in out
+    assert "**Score:** 50%" in out
+    assert "## Summary by severity" in out
+    # The failing HIGH control's remediation must surface in the checklist.
+    assert "set no" in out
+    assert "5.2.8" in out
+
+
+def test_markdown_escapes_pipes_in_cells():
+    r = AuditReport(
+        host="h",
+        timestamp="2026-06-23T00:00:00",
+        results=[
+            CheckResult(
+                Control("1.1", "weird", Severity.LOW, "d"),
+                Finding.failed(found="a|b", expected="c"),
+            )
+        ],
+    )
+    assert r"a\|b" in md_reporter.render(r)
+
+
+def test_html_is_escaped_and_self_contained():
+    r = AuditReport(
+        host="<x>",
+        timestamp="2026-06-23T00:00:00",
+        results=[
+            CheckResult(
+                Control("1.1", "t", Severity.HIGH, "d"),
+                Finding.failed(found="<script>", expected="safe"),
+            )
+        ],
+    )
+    out = html_reporter.render(r)
+    assert out.startswith("<!DOCTYPE html>")
+    assert "<style>" in out  # inline CSS, no external assets
+    assert "<script>" not in out  # the value was escaped, not injected
+    assert "&lt;script&gt;" in out
+
+
+def test_md_alias_resolves_to_markdown():
+    assert canonical("md") == "markdown"
+    assert get_reporter("md") is md_reporter.render
