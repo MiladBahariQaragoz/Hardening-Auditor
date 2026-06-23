@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, RunCommand, WriteFile
+
+SYSCTL_DROPIN = "/etc/sysctl.d/60-hardening-auditor.conf"
 
 # (CIS sub-id, /proc/sys path, required value). Paths use the /proc/sys layout so we can read
 # the live value directly via Host.read_text.
@@ -62,3 +65,24 @@ def check(host: Host) -> Finding:
             expected=expected,
         )
     return Finding.passed(found=f"{readable}/{readable} hardened", expected=expected)
+
+
+def _sysctl_key(proc_path: str) -> str:
+    """'/proc/sys/net/ipv4/ip_forward' -> 'net.ipv4.ip_forward'."""
+    return proc_path.removeprefix("/proc/sys/").replace("/", ".")
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    lines = ["# Managed by linux-hardening-auditor"]
+    for _cid, path, want in PARAMETERS:
+        key = _sysctl_key(path)
+        lines.append(f"{key} = {want}")
+        # CIS also hardens the conf.default.* counterpart of each conf.all.* parameter.
+        if ".conf.all." in key:
+            lines.append(f"{key.replace('.conf.all.', '.conf.default.')} = {want}")
+    content = "\n".join(lines) + "\n"
+    return [
+        WriteFile(SYSCTL_DROPIN, content, mode=0o644),
+        RunCommand(("sysctl", "--system"), "apply sysctl parameters now"),
+    ]

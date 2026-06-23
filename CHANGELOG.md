@@ -45,6 +45,20 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   - `§3.3` kernel sysctl network hardening (composite over /proc/sys live values).
   - Shared `_systemd` helper (is-active/is-enabled) for the service-state controls.
   - Test suite grows to 56, still fully OS-independent via `FakeHost`.
+- **Remediation engine (Phase 4):** `auditor/remediation.py` — reversible `fix` with a pure
+  planning step (`fix(host) -> list[Action]`), a side-effecting `Applier` that backs up every
+  file before changing it, and a post-fix re-verification that re-runs the control's own check
+  (ADR-0005). Action vocabulary: `WriteFile` / `SetMode` / `SetOwner` / `RunCommand`. New
+  `@fixer(check)` registry decorator; the engine/reporters are untouched.
+  - CLI: `fix --dry-run` prints the exact plan and changes nothing; `fix` applies with backups
+    under `backups/<timestamp>/` (override with `--backup-dir`) and exits non-zero if any fix
+    fails to verify.
+  - Fixers added for 6 file-based controls (now `implemented+fix`): SSH PermitRootLogin /
+    PasswordAuthentication / ciphers (via validated `sshd_config.d` drop-ins + `sshd -t` before
+    reload), pwquality minlen (preserving other settings), `/etc/shadow` perms, and sysctl
+    (drop-in + `sysctl --system`).
+  - Tests: +11 (67 total) — fixer planning, dry-run rendering, the apply→verify loop on a
+    mutable fake host, command-failure abort, and `LocalApplier` backup behaviour.
 
 ### Fixed
 - Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the

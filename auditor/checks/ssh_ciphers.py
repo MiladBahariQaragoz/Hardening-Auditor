@@ -12,8 +12,15 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
-from ._ssh import effective_config
+from ..registry import control, fixer
+from ..remediation import Action
+from ._ssh import dropin_actions, effective_config
+
+# The strong set we install when remediating (AEAD + CTR; no CBC/arcfour/3des).
+STRONG_CIPHERS = (
+    "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,"
+    "aes256-ctr,aes192-ctr,aes128-ctr"
+)
 
 # Ciphers CIS 22.04 v1.0.0 considers weak — CBC modes and legacy stream ciphers.
 WEAK_CIPHERS = frozenset(
@@ -65,3 +72,8 @@ def check(host: Host) -> Finding:
     if weak:
         return Finding.failed(found=", ".join(weak), expected="no weak ciphers")
     return Finding.passed(found=raw, expected="no weak ciphers")
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    return dropin_actions("60-hardening-ciphers.conf", [f"Ciphers {STRONG_CIPHERS}"])

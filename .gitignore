@@ -27,6 +27,9 @@ reports/*.html
 reports/*.json
 !reports/.gitkeep
 
+# Remediation backups (created by `auditor fix` on the target host)
+backups/
+
 # Logs (traceability lives in committed markdown, not raw logs)
 logs/
 *.log

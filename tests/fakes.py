@@ -9,6 +9,7 @@ machine (ADR-0004). Anything not explicitly configured behaves like "absent": fi
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from auditor.host import CommandResult, FileStat
 
@@ -38,3 +39,47 @@ class FakeHost:
             tuple(argv),
             CommandResult(returncode=127, stdout="", stderr=f"{argv[0]}: not found"),
         )
+
+
+class FakeApplier:
+    """An ``Applier`` that mutates a ``FakeHost`` in memory and records what it did.
+
+    Mutating the same host the check reads lets a test exercise the whole
+    plan -> apply -> verify loop: after a fix the re-run check sees the new state.
+    """
+
+    def __init__(self, host: FakeHost) -> None:
+        self.host = host
+        self.commands: list[tuple[str, ...]] = []
+        self.backups: list[str] = []
+
+    def backup(self, path: str) -> str | None:
+        if path in self.host._files or path in self.host._stats:
+            location = f"/backup{path}"
+            self.backups.append(location)
+            return location
+        return None
+
+    def write_file(self, path: str, content: str, mode: int | None) -> None:
+        self.host._files[path] = content
+        if mode is not None:
+            self._set_stat(path, mode=mode)
+
+    def set_mode(self, path: str, mode: int) -> None:
+        self._set_stat(path, mode=mode)
+
+    def set_owner(self, path: str, owner: str, group: str) -> None:
+        uid = 0 if owner == "root" else 1000
+        self._set_stat(path, owner=owner, group=group, uid=uid)
+
+    def run(self, argv: Sequence[str]) -> tuple[int, str]:
+        self.commands.append(tuple(argv))
+        return 0, ""
+
+    def _set_stat(self, path: str, **changes) -> None:
+        current = self.host._stats.get(path) or FileStat(
+            mode=0o644, uid=0, gid=0, owner="root", group="root"
+        )
+        if "uid" in changes:
+            changes["gid"] = changes["uid"]
+        self.host._stats[path] = replace(current, **changes)

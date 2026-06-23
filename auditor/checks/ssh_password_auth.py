@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
-from ._ssh import effective_config
+from ..registry import control, fixer
+from ..remediation import Action
+from ._ssh import dropin_actions, effective_config
 
 
 @control(
@@ -41,3 +42,11 @@ def check(host: Host) -> Finding:
     if value.lower() == "no":
         return Finding.passed(found=value, expected="no")
     return Finding.failed(found=value, expected="no")
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    # NOTE: disabling password auth can lock out users who lack a working SSH key. The drop-in
+    # is written and validated with `sshd -t` before reload, but operators must ensure key
+    # access works first (the remediation text says so).
+    return dropin_actions("60-hardening-passwordauth.conf", ["PasswordAuthentication no"])

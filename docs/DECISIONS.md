@@ -53,3 +53,25 @@ add a new ADR that supersedes the old one (don't edit history) — that is what 
 - **Consequences:** The full test suite runs on any OS with no Linux required; a future
   `RemoteHost` (audit over SSH) drops in without touching a single check; every system access
   flows through one loggable surface. Cost: one extra indirection and a small fake to maintain.
+
+## ADR-0005 — Remediation = pure planning + a separate applier + re-verification
+- **Date:** 2026-06-23
+- **Status:** Accepted
+- **Context:** `fix` must change a real host's security configuration safely (ADR-0002). The
+  danger is an opaque, irreversible change. We also want remediation to stay testable on the
+  Windows dev box and to never grow the engine per control (ADR-0001).
+- **Decision:** Split remediation into three parts. (1) A control's **fixer** is a pure
+  function `fix(host) -> list[Action]`; it only *reads* the host and returns a declarative
+  plan, so `--dry-run` is "plan, then print" with zero side effects. (2) An **Applier**
+  performs the side effects, **backing up every file before it changes it**; `LocalApplier`
+  does real I/O, tests use a recording fake. (3) After a control's actions are applied, the
+  control's **own check is re-run to verify** — a fix that doesn't make the check pass is
+  reported as failed, not assumed. Actions are a small reversible vocabulary (`WriteFile`,
+  `SetMode`, `SetOwner`, `RunCommand`); SSH/sysctl changes go in drop-in files, and SSH fixes
+  run `sshd -t` before reloading so a bad config can never lock out access. Fixers register via
+  one `@fixer(check)` decorator in the control's own module.
+- **Consequences:** Dry-run is trustworthy by construction; the plan/apply split makes both
+  halves unit-testable; the engine never changes when a fixer is added. `RunCommand` is not
+  auto-reversible (used for reload/enable/install) — accepted, and offset by the kept backups
+  and the verify step. Verifying state changed by the kernel (e.g. `sysctl --system` updating
+  `/proc/sys`) is covered on a live host, not by the in-memory fake.

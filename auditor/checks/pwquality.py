@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, WriteFile
 
 PWQUALITY_CONF = "/etc/security/pwquality.conf"
 REQUIRED_MINLEN = 14
@@ -43,6 +44,30 @@ def check(host: Host) -> Finding:
     if minlen >= REQUIRED_MINLEN:
         return Finding.passed(found=f"minlen = {minlen}", expected=f"minlen >= {REQUIRED_MINLEN}")
     return Finding.failed(found=f"minlen = {minlen}", expected=f"minlen >= {REQUIRED_MINLEN}")
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    """Set minlen=14, preserving any other settings already in pwquality.conf."""
+    current = host.read_text(PWQUALITY_CONF) or ""
+    new_text = _ensure_minlen(current, REQUIRED_MINLEN)
+    return [WriteFile(PWQUALITY_CONF, new_text, mode=0o644)]
+
+
+def _ensure_minlen(text: str, value: int) -> str:
+    """Replace an existing minlen directive, or append one if none is present."""
+    out: list[str] = []
+    replaced = False
+    for raw in text.splitlines():
+        key = raw.split("=", 1)[0].strip().lower()
+        if key == "minlen" and not raw.strip().startswith("#"):
+            out.append(f"minlen = {value}")
+            replaced = True
+        else:
+            out.append(raw)
+    if not replaced:
+        out.append(f"minlen = {value}")
+    return "\n".join(out) + "\n"
 
 
 def _parse_minlen(text: str) -> int | None:

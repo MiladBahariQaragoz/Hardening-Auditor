@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, SetMode, SetOwner
 
 SHADOW = "/etc/shadow"
 MAX_MODE = 0o640  # the most permissive mode that still passes
@@ -47,3 +48,8 @@ def check(host: Host) -> Finding:
     if problems:
         return Finding.failed(found="; ".join(problems), expected=expected)
     return Finding.passed(found=f"{st.owner}:{st.group} {st.mode_octal}", expected=expected)
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    return [SetOwner(SHADOW, "root", "shadow"), SetMode(SHADOW, 0o640)]

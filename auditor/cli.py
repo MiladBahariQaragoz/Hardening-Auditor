@@ -12,7 +12,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import __version__
+from . import __version__, remediation
 from .engine import run
 from .host import LocalHost
 from .models import Status
@@ -51,6 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     fix = sub.add_parser("fix", help="apply safe remediations (opt-in, with backups)")
     fix.add_argument("--dry-run", action="store_true", help="show what would change, change nothing")
+    fix.add_argument(
+        "--backup-dir",
+        type=Path,
+        help="where to back up files before changing them (default: backups/<timestamp>/)",
+    )
     fix.set_defaults(func=_cmd_fix)
 
     return parser
@@ -84,8 +89,19 @@ def _default_output(fmt: str, report) -> Path | None:
 
 
 def _cmd_fix(args: argparse.Namespace) -> int:
-    print("remediation is not implemented yet (planned for Phase 4); no changes were made.")
-    return 0
+    host = LocalHost()
+    report = run(host)
+    plans = remediation.plan(host, report.results)
+
+    if args.dry_run or not plans:
+        sys.stdout.write(remediation.render_dry_run(plans))
+        return 0
+
+    backup_dir = args.backup_dir or remediation.default_backup_dir()
+    applier = remediation.LocalApplier(backup_dir)
+    outcomes = remediation.apply(host, applier, plans)
+    sys.stdout.write(remediation.render_apply(outcomes, backup_dir))
+    return 0 if all(o.ok for o in outcomes) else 1
 
 
 def main(argv: list[str] | None = None) -> int:

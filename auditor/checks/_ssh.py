@@ -15,8 +15,25 @@ Resolving sshd config correctly is subtle, so it lives here once:
 from __future__ import annotations
 
 from ..host import Host
+from ..remediation import Action, RunCommand, WriteFile
 
 SSHD_CONFIG = "/etc/ssh/sshd_config"
+SSHD_CONFIG_D = "/etc/ssh/sshd_config.d"
+
+
+def dropin_actions(filename: str, directives: list[str]) -> list[Action]:
+    """Plan to harden sshd via a drop-in under sshd_config.d, then validate and reload.
+
+    Ubuntu's default sshd_config ``Include``s ``sshd_config.d/*.conf`` at the top, so a drop-in
+    wins over later settings (sshd uses the first value seen). We always ``sshd -t`` before
+    reloading so a bad config can never take down SSH access.
+    """
+    content = "# Managed by linux-hardening-auditor\n" + "\n".join(directives) + "\n"
+    return [
+        WriteFile(f"{SSHD_CONFIG_D}/{filename}", content, mode=0o600),
+        RunCommand(("sshd", "-t"), "validate sshd configuration before reload"),
+        RunCommand(("systemctl", "reload", "ssh"), "apply new sshd configuration"),
+    ]
 
 
 def effective_config(host: Host) -> tuple[dict[str, str] | None, str]:
