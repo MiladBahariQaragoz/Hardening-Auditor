@@ -79,6 +79,10 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   - 31 of 32 controls are `implemented+fix`. Tests grow to 146.
 
 ### Fixed
+- Lowered the required Python from 3.11 to **3.10** to match Ubuntu 22.04's default interpreter
+  (the audit target). Verified the full package runs on Python 3.10.12 in a real Ubuntu 22.04
+  (WSL) environment — a clean audit produced accurate findings from live `/proc/sys`,
+  `/etc/login.defs`, and file modes.
 - Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the
   CIS Ubuntu 22.04 LTS Benchmark **v1.0.0** numbering (verified against public mirrors).
 

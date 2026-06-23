@@ -88,8 +88,8 @@ docs/                 # control catalogue, threat model, decision log
 
 ## Tech
 
-Python 3.11+, standard library first. Linting with `ruff`, tests with `pytest`. No external
-dependencies required to run an audit.
+Python 3.10+ (matches Ubuntu 22.04's default), standard library first. Linting with `ruff`,
+tests with `pytest`. No external dependencies required to run an audit.
 
 ## References
 

@@ -7,7 +7,7 @@ name = "linux-hardening-auditor"
 version = "0.1.0"
 description = "Audit a Linux host against the CIS Benchmark and report (and optionally remediate) deviations."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Milad Bahari Qaragoz" }]
 # Runtime uses the standard library only — no third-party dependencies to run an audit.
@@ -23,7 +23,7 @@ auditor = "auditor.cli:main"
 include = ["auditor*"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
