@@ -5,8 +5,8 @@ and reports, control by control, where the system deviates from a secure baselin
 severity, a clear explanation, and a remediation step for every finding. An optional, reversible
 `--fix` mode applies safe hardening automatically.
 
-> **Status:** early development. The architecture and control catalogue are in place; checks are
-> being implemented incrementally. See the [Roadmap](#roadmap) and [`docs/CONTROLS.md`](docs/CONTROLS.md).
+> **Status:** working. **32 CIS controls** are implemented and mapped to control IDs, 31 with
+> safe `--fix` remediation. See the [Roadmap](#roadmap) and [`docs/CONTROLS.md`](docs/CONTROLS.md).
 
 ## What it does
 
@@ -80,7 +80,7 @@ docs/                 # control catalogue, threat model, decision log
 
 ## Roadmap
 
-- [ ] 30+ CIS controls implemented and mapped to control IDs (catalogue seeded in `docs/CONTROLS.md`)
+- [x] 30+ CIS controls implemented and mapped to control IDs (32 in `docs/CONTROLS.md`)
 - [x] Markdown / HTML / JSON reporters (plus a severity-grouped console summary)
 - [x] `fix --dry-run` and `fix` remediation with per-file backups and post-fix verification
 - [ ] Before/after demo on a default vs. hardened VM, with screenshots

@@ -64,6 +64,19 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
     so a remote host can't lock itself out. 9 of 10 controls are now `implemented+fix`; only
     `§2.2` stays audit-only (auto-disabling arbitrary services isn't a safe automatic action).
     Tests grow to 71.
+- **Catalogue expanded to 32 controls (Phase 5):** +22 controls, all CIS Ubuntu 22.04 v1.0.0,
+  reusing shared helpers so each module stays a few lines:
+  - SSH (11): `5.2.1` sshd_config perms, `5.2.5` LogLevel, `5.2.6` UsePAM, `5.2.9`
+    PermitEmptyPasswords, `5.2.11` IgnoreRhosts, `5.2.12` X11Forwarding, `5.2.14` strong MACs,
+    `5.2.15` strong KexAlgorithms, `5.2.16` AllowTcpForwarding, `5.2.18` MaxAuthTries,
+    `5.2.21` LoginGraceTime — new `_ssh` helpers (`require_equals`/`require_in`/`require_at_most`
+    /`require_no_weak`) and drop-in fixers.
+  - File permissions (5): `6.1.1` passwd, `6.1.3` group, `6.1.7` gshadow, `5.1.2` crontab,
+    via new `_fileperms` helper.
+  - Password aging (3): `5.5.1.1`/`5.5.1.2`/`5.5.1.3` via new `_logindefs` helper.
+  - Process hardening (2): `1.5.1` ASLR, `1.5.4` core dumps, via new `_sysctl` helper.
+  - cron (1): `5.1.1` cron enabled/active; MAC (1): `1.3.1` AppArmor enabled (audit-only).
+  - 31 of 32 controls are `implemented+fix`. Tests grow to 146.
 
 ### Fixed
 - Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the

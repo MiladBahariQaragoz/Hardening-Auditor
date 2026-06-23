@@ -62,5 +62,50 @@ normal host never needs. These are the primitives behind spoofing, on-path traff
 and MITM. Disabling them (and enabling reverse-path filtering / SYN cookies) denies the attacker
 those building blocks.
 
+### SSH session & crypto hardening (5.2.x)
+A cluster of sshd settings that each remove an attacker primitive:
+- **sshd_config perms 0600 (5.2.1):** a writable config lets a low-priv user re-enable root
+  login; a readable one leaks the host's exact auth posture.
+- **LogLevel INFO/VERBOSE (5.2.5):** below INFO, the logins and key fingerprints responders
+  need simply aren't recorded.
+- **UsePAM yes (5.2.6):** without PAM, sshd bypasses account-expiry, access-limit and session
+  policy entirely.
+- **PermitEmptyPasswords no (5.2.9):** an empty-password account is a remote login with no
+  secret at all.
+- **IgnoreRhosts yes (5.2.11):** rhosts trust grants login based only on source host — an
+  attacker who owns a "trusted" host walks in.
+- **X11Forwarding no (5.2.12):** a malicious server can sniff keystrokes from a forwarded X
+  session.
+- **strong MACs / KEX (5.2.14/5.2.15):** MD5/SHA1 MACs and SHA1/small-group key exchanges let
+  an on-path attacker forge integrity or threaten the session key.
+- **AllowTcpForwarding no (5.2.16):** forwarding turns SSH into a pivot/exfil tunnel past the
+  firewall.
+- **MaxAuthTries ≤ 4 (5.2.18) / LoginGraceTime ≤ 60s (5.2.21):** cap online guessing and stop
+  an attacker from parking many unauthenticated connections (a cheap DoS and a wider brute window).
+
+### Sensitive file permissions (6.1.x, 5.1.2)
+`/etc/passwd` and `/etc/group` writable by non-root means added accounts or self-promotion into
+`sudo`; `/etc/gshadow` readable leaks group password hashes (mirrors `/etc/shadow`); a writable
+`/etc/crontab` is direct root code execution. Each control pins owner root and a least-permissive
+mode.
+
+### Password aging (5.5.1.x)
+`PASS_MAX_DAYS ≤ 365` bounds how long a leaked password stays valid; `PASS_MIN_DAYS ≥ 1` stops a
+user from immediately cycling back to an old password after a forced change; `PASS_WARN_AGE ≥ 7`
+avoids rushed, weak password choices at expiry.
+
+### Process hardening (1.5.x)
+**ASLR (1.5.1)** randomizes memory layout so memory-corruption exploits can't rely on fixed
+addresses. **Restricting core dumps (1.5.4)** stops a setuid process from spilling in-memory
+secrets (keys, hashes) into a file a lesser user can read.
+
+### cron daemon enabled (5.1.1)
+Log rotation, integrity scans, and automatic updates run from cron; if it isn't running, those
+protections silently stop.
+
+### AppArmor enabled (1.3.1)
+Mandatory access control confines each program to what it legitimately needs, so one exploited
+daemon can't roam the whole system. Audit-only here — enabling it safely requires a reboot.
+
 > Extend this file in lockstep with `docs/CONTROLS.md`. Each new control gets a short,
 > attacker-framed paragraph here.

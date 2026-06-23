@@ -15,6 +15,7 @@ Resolving sshd config correctly is subtle, so it lives here once:
 from __future__ import annotations
 
 from ..host import Host
+from ..models import Finding
 from ..remediation import Action, RunCommand, WriteFile
 
 SSHD_CONFIG = "/etc/ssh/sshd_config"
@@ -51,6 +52,66 @@ def effective_config(host: Host) -> tuple[dict[str, str] | None, str]:
         return _parse(text, first_wins=True), SSHD_CONFIG
 
     return None, "sshd not present / config unreadable"
+
+
+def require_equals(host: Host, key: str, want: str, *, default_note: str = "") -> Finding:
+    """Pass iff sshd's effective ``key`` equals ``want`` (case-insensitive)."""
+    config, _ = effective_config(host)
+    if config is None:
+        return Finding.skipped(detail="sshd not present / config unreadable")
+    value = config.get(key)
+    if value is None:
+        found = "unset" + (f" ({default_note})" if default_note else "")
+        return Finding.failed(found=found, expected=want)
+    if value.lower() == want.lower():
+        return Finding.passed(found=value, expected=want)
+    return Finding.failed(found=value, expected=want)
+
+
+def require_in(host: Host, key: str, allowed: tuple[str, ...]) -> Finding:
+    """Pass iff sshd's effective ``key`` is one of ``allowed`` (case-insensitive)."""
+    config, _ = effective_config(host)
+    if config is None:
+        return Finding.skipped(detail="sshd not present / config unreadable")
+    value = config.get(key)
+    want = " or ".join(allowed)
+    if value is None:
+        return Finding.failed(found="unset", expected=want)
+    if value.lower() in {a.lower() for a in allowed}:
+        return Finding.passed(found=value, expected=want)
+    return Finding.failed(found=value, expected=want)
+
+
+def require_at_most(host: Host, key: str, limit: int) -> Finding:
+    """Pass iff sshd's effective integer ``key`` is <= ``limit``."""
+    config, _ = effective_config(host)
+    if config is None:
+        return Finding.skipped(detail="sshd not present / config unreadable")
+    value = config.get(key)
+    if value is None:
+        return Finding.failed(found="unset", expected=f"<= {limit}")
+    try:
+        number = int(value.split()[0])  # MaxStartups is "10:30:60"; first field is the count
+    except (ValueError, IndexError):
+        return Finding.failed(found=value, expected=f"integer <= {limit}")
+    if number <= limit:
+        return Finding.passed(found=value, expected=f"<= {limit}")
+    return Finding.failed(found=value, expected=f"<= {limit}")
+
+
+def require_no_weak(host: Host, key: str, weak: frozenset[str]) -> Finding:
+    """Pass iff none of sshd's effective ``key`` algorithms are in the ``weak`` set."""
+    config, _ = effective_config(host)
+    if config is None:
+        return Finding.skipped(detail="sshd not present / config unreadable")
+    raw = config.get(key)
+    if raw is None:
+        return Finding.failed(found="unset (compiled-in default)", expected="explicit strong list")
+    offered = [a.strip().lower() for a in raw.split(",") if a.strip()]
+    bad = [a for a in offered if a in weak]
+    if bad:
+        return Finding.failed(found=", ".join(bad), expected="no weak algorithms")
+    return Finding.passed(found=raw, expected="no weak algorithms")
 
 
 def _parse(text: str, *, first_wins: bool) -> dict[str, str]:
