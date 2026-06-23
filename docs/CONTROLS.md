@@ -12,16 +12,25 @@ commit as the code. Target for "done": 30+ implemented controls (see `README.md`
 | # | CIS ID | Control | Module | Severity | Status |
 |---|--------|---------|--------|----------|--------|
 | 1 | 5.2.7 | SSH: `PermitRootLogin no` | `ssh_permit_root_login.py` | high | implemented |
-| 2 | 5.2.x | SSH: `PasswordAuthentication no` (key-only) | `ssh_password_auth.py` | high | planned |
-| 3 | 5.2.x | SSH: `Protocol 2` / weak ciphers disabled | `ssh_ciphers.py` | medium | planned |
-| 4 | 5.4.x | Password policy: min length / complexity | `pwquality.py` | medium | planned |
-| 5 | 4.1.x | `auditd` installed and enabled | `auditd_enabled.py` | high | planned |
-| 6 | 3.5.x | Host firewall active (ufw/nftables) | `firewall_active.py` | high | planned |
-| 7 | 1.x | Unattended security upgrades enabled | `unattended_upgrades.py` | medium | planned |
-| 8 | 6.1.x | `/etc/shadow` permissions `0640`/`0000` | `shadow_perms.py` | high | planned |
-| 9 | 2.2.x | Unused services disabled | `disabled_services.py` | medium | planned |
-| 10 | 3.3.x | Kernel `sysctl` network hardening | `sysctl_network.py` | medium | planned |
+| 2 | 5.2 (BP)† | SSH: `PasswordAuthentication no` (key-only) | `ssh_password_auth.py` | high | implemented |
+| 3 | 5.2.13 | SSH: only strong ciphers (no CBC/arcfour/3des) | `ssh_ciphers.py` | medium | implemented |
+| 4 | 5.4.1 | Password policy: minimum length ≥ 14 | `pwquality.py` | medium | implemented |
+| 5 | 4.1.1.2 | `auditd` installed, enabled, and active | `auditd_enabled.py` | high | implemented |
+| 6 | 3.5.1.3 | Host firewall active (ufw/nftables) | `firewall_active.py` | high | implemented |
+| 7 | 1.9 | Automatic security upgrades enabled | `unattended_upgrades.py` | medium | implemented |
+| 8 | 6.1.5 | `/etc/shadow` permissions ≤ `0640` | `shadow_perms.py` | high | implemented |
+| 9 | §2.2 | No unnecessary legacy services running | `disabled_services.py` | medium | implemented |
+| 10 | §3.3 | Kernel `sysctl` network hardening | `sysctl_network.py` | medium | implemented |
 
-> Rows above are the seed set. Expand toward 30+ as checks are implemented; keep ordering by
-> the `#` column stable so report diffs stay meaningful. The full rationale for each control
-> lives in `docs/THREAT-MODEL.md`.
+> **Benchmark:** CIS Ubuntu Linux 22.04 LTS Benchmark **v1.0.0** (each module's docstring
+> records its exact control id). Sub-numbering differs in later benchmark versions (v2.0.0
+> moved SSH to §5.1), so the version is pinned deliberately.
+>
+> † Control 2 is a **hardening best-practice beyond CIS** — disabling password auth is not a
+> discrete CIS v1.0.0 control (CIS allows password+MFA); it aligns with BSI IT-Grundschutz
+> SYS.1.3 (key-based auth). Controls 9 and 10 are **composite** checks over a section (`§2.2`,
+> `§3.3`); the constituent sub-ids are listed in their module docstrings.
+>
+> Rows above are the seed set (all 10 implemented). Expand toward 30+ as checks are added; keep
+> ordering by the `#` column stable so report diffs stay meaningful. The full rationale for each
+> control lives in `docs/THREAT-MODEL.md`.

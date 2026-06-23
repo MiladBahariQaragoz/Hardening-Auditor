@@ -31,6 +31,20 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   alongside the existing `console` and `json`. Shared `_common` helper guarantees identical
   grouping/ordering across formats. `--report md` is an alias for markdown; markdown/html
   default their output to `reports/<host>-<date>.<ext>`. Reporter tests extended to 11.
+- **Seed control catalogue completed (Phase 3):** the remaining 9 controls, mapped to
+  CIS Ubuntu 22.04 LTS v1.0.0 (each with a test and a THREAT-MODEL rationale):
+  - `5.2-BP` SSH key-only auth (`PasswordAuthentication no`) — best practice beyond CIS,
+    BSI-aligned, labelled honestly as such.
+  - `5.2.13` SSH strong ciphers only (fails on CBC/arcfour/3des).
+  - `5.4.1` password minimum length ≥ 14 (pam_pwquality).
+  - `4.1.1.2` auditd installed, enabled, and active.
+  - `3.5.1.3` host firewall active (ufw, or an active nftables ruleset).
+  - `1.9` automatic security updates via unattended-upgrades.
+  - `6.1.5` `/etc/shadow` permissions ≤ 0640, root-owned.
+  - `§2.2` no unnecessary legacy services running (composite deny-list).
+  - `§3.3` kernel sysctl network hardening (composite over /proc/sys live values).
+  - Shared `_systemd` helper (is-active/is-enabled) for the service-state controls.
+  - Test suite grows to 56, still fully OS-independent via `FakeHost`.
 
 ### Fixed
 - Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the
