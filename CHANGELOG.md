@@ -22,7 +22,7 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
 - `pyproject.toml` (stdlib-only runtime; `ruff` + `pytest` dev extras) and a `tests/` suite
   covering the engine, registry, and reporters (8 tests, all OS-independent via `FakeHost`).
 - ADR-0004: checks read the system through an injected `Host`, never directly.
-- **First control (Phase 1):** CIS 5.2.8 — SSH `PermitRootLogin no`
+- **First control (Phase 1):** CIS 5.2.7 — SSH `PermitRootLogin no`
   (`auditor/checks/ssh_permit_root_login.py`), with a shared `_ssh` helper that resolves
   sshd's effective config via `sshd -T` and falls back to parsing `/etc/ssh/sshd_config`
   (first-value-wins, per `sshd_config(5)`). 7 tests cover pass/fail/skip and the fallback.
@@ -31,6 +31,10 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   alongside the existing `console` and `json`. Shared `_common` helper guarantees identical
   grouping/ordering across formats. `--report md` is an alias for markdown; markdown/html
   default their output to `reports/<host>-<date>.<ext>`. Reporter tests extended to 11.
+
+### Fixed
+- Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the
+  CIS Ubuntu 22.04 LTS Benchmark **v1.0.0** numbering (verified against public mirrors).
 
 ### Changed
 - Rewrote `README.md` as a product-facing project showcase (what the tool does, quick start,

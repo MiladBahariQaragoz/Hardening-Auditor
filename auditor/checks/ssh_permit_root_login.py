@@ -1,6 +1,6 @@
-"""CIS 5.2.8 — Ensure SSH root login is disabled (``PermitRootLogin no``).
+"""CIS 5.2.7 — Ensure SSH root login is disabled (``PermitRootLogin no``).
 
-Benchmark: CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0, control 5.2.8.
+Benchmark: CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0, control 5.2.7.
 Rationale lives in docs/THREAT-MODEL.md; this docstring records the exact benchmark mapping.
 """
 
@@ -13,7 +13,7 @@ from ._ssh import effective_config
 
 
 @control(
-    id="5.2.8",
+    id="5.2.7",
     title="SSH PermitRootLogin disabled",
     severity=Severity.HIGH,
     description="sshd must refuse direct root login (PermitRootLogin no).",
@@ -25,7 +25,7 @@ from ._ssh import effective_config
         "Set 'PermitRootLogin no' in /etc/ssh/sshd_config (or a drop-in under "
         "/etc/ssh/sshd_config.d/), then reload sshd: systemctl reload ssh."
     ),
-    benchmark="CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0 — 5.2.8",
+    benchmark="CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0 — 5.2.7",
 )
 def check(host: Host) -> Finding:
     config, _source = effective_config(host)
