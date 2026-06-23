@@ -22,6 +22,10 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
 - `pyproject.toml` (stdlib-only runtime; `ruff` + `pytest` dev extras) and a `tests/` suite
   covering the engine, registry, and reporters (8 tests, all OS-independent via `FakeHost`).
 - ADR-0004: checks read the system through an injected `Host`, never directly.
+- **First control (Phase 1):** CIS 5.2.8 — SSH `PermitRootLogin no`
+  (`auditor/checks/ssh_permit_root_login.py`), with a shared `_ssh` helper that resolves
+  sshd's effective config via `sshd -T` and falls back to parsing `/etc/ssh/sshd_config`
+  (first-value-wins, per `sshd_config(5)`). 7 tests cover pass/fail/skip and the fallback.
 
 ### Changed
 - Rewrote `README.md` as a product-facing project showcase (what the tool does, quick start,

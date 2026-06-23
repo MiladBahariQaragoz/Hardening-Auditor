@@ -11,7 +11,7 @@ commit as the code. Target for "done": 30+ implemented controls (see `README.md`
 
 | # | CIS ID | Control | Module | Severity | Status |
 |---|--------|---------|--------|----------|--------|
-| 1 | 5.2.x | SSH: `PermitRootLogin no` | `ssh_permit_root_login.py` | high | planned |
+| 1 | 5.2.8 | SSH: `PermitRootLogin no` | `ssh_permit_root_login.py` | high | implemented |
 | 2 | 5.2.x | SSH: `PasswordAuthentication no` (key-only) | `ssh_password_auth.py` | high | planned |
 | 3 | 5.2.x | SSH: `Protocol 2` / weak ciphers disabled | `ssh_ciphers.py` | medium | planned |
 | 4 | 5.4.x | Password policy: min length / complexity | `pwquality.py` | medium | planned |
