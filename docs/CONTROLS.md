@@ -15,9 +15,9 @@ commit as the code. Target for "done": 30+ implemented controls (see `README.md`
 | 2 | 5.2 (BP)† | SSH: `PasswordAuthentication no` (key-only) | `ssh_password_auth.py` | high | implemented+fix |
 | 3 | 5.2.13 | SSH: only strong ciphers (no CBC/arcfour/3des) | `ssh_ciphers.py` | medium | implemented+fix |
 | 4 | 5.4.1 | Password policy: minimum length ≥ 14 | `pwquality.py` | medium | implemented+fix |
-| 5 | 4.1.1.2 | `auditd` installed, enabled, and active | `auditd_enabled.py` | high | implemented |
-| 6 | 3.5.1.3 | Host firewall active (ufw/nftables) | `firewall_active.py` | high | implemented |
-| 7 | 1.9 | Automatic security upgrades enabled | `unattended_upgrades.py` | medium | implemented |
+| 5 | 4.1.1.2 | `auditd` installed, enabled, and active | `auditd_enabled.py` | high | implemented+fix |
+| 6 | 3.5.1.3 | Host firewall active (ufw/nftables) | `firewall_active.py` | high | implemented+fix |
+| 7 | 1.9 | Automatic security upgrades enabled | `unattended_upgrades.py` | medium | implemented+fix |
 | 8 | 6.1.5 | `/etc/shadow` permissions ≤ `0640` | `shadow_perms.py` | high | implemented+fix |
 | 9 | §2.2 | No unnecessary legacy services running | `disabled_services.py` | medium | implemented |
 | 10 | §3.3 | Kernel `sysctl` network hardening | `sysctl_network.py` | medium | implemented+fix |

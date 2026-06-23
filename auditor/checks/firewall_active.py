@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, RunCommand
 from ._systemd import is_active
 
 
@@ -38,3 +39,16 @@ def check(host: Host) -> Finding:
     if ufw.ok and "status: inactive" in ufw.stdout.lower():
         return Finding.failed(found="ufw inactive", expected="active firewall")
     return Finding.failed(found="no active host firewall", expected="active firewall")
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    # ORDER MATTERS: allow SSH *before* enabling default-deny, or we lock ourselves out of a
+    # remote host (e.g. the GCP demo VM). Then set policy, then enable.
+    return [
+        RunCommand(("apt-get", "install", "-y", "ufw"), "ensure ufw is installed"),
+        RunCommand(("ufw", "allow", "OpenSSH"), "allow SSH BEFORE enabling (avoid lockout)"),
+        RunCommand(("ufw", "default", "deny", "incoming"), "default-deny inbound"),
+        RunCommand(("ufw", "default", "allow", "outgoing"), "allow outbound"),
+        RunCommand(("ufw", "--force", "enable"), "enable the firewall"),
+    ]

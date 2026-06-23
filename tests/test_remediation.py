@@ -24,11 +24,13 @@ def test_dry_run_render_lists_actions_without_applying(catalogue):
     assert "dry-run" in text
 
 
-def test_plan_skips_controls_without_a_fixer(catalogue):
-    # auditd has no fixer in this phase; it fails on a bare host but must not appear in a plan.
-    host = FakeHost()
-    plans = remediation.plan(host, engine.run(host).results)
-    assert "4.1.1.2" not in [p.control.id for p in plans]
+def test_audit_only_control_has_no_fixer(catalogue):
+    # §2.2 (disable arbitrary services) is intentionally audit-only — auto-disabling unknown
+    # services isn't a safe automatic action — so it must have no registered fixer.
+    from auditor import registry
+
+    assert registry.fixer_for("§2.2") is None
+    assert registry.fixer_for("6.1.5") is not None  # control point: fixable ones do have one
 
 
 def test_apply_fixes_shadow_and_verifies_pass(catalogue):
@@ -58,6 +60,18 @@ def test_apply_sysctl_writes_dropin_and_runs_sysctl(catalogue):
     assert "/etc/sysctl.d/60-hardening-auditor.conf" in host._files
     assert "net.ipv4.ip_forward = 0" in host._files["/etc/sysctl.d/60-hardening-auditor.conf"]
     assert ("sysctl", "--system") in applier.commands
+
+
+def test_apply_unattended_upgrades_installs_and_verifies(catalogue):
+    # File absent -> control fails; fixer runs apt install + writes the config; verify passes.
+    host = FakeHost()
+    plans = remediation.plan(host, engine.run(host).results)
+    applier = FakeApplier(host)
+
+    outcomes = remediation.apply(host, applier, plans)
+    uu = next(o for o in outcomes if o.control.id == "1.9")
+    assert uu.verified is Status.PASS
+    assert any(argv[:3] == ("apt-get", "install", "-y") for argv in applier.commands)
 
 
 def test_failed_command_aborts_and_reports_error(catalogue):

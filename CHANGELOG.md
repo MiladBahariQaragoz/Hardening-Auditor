@@ -59,6 +59,11 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
     (drop-in + `sysctl --system`).
   - Tests: +11 (67 total) — fixer planning, dry-run rendering, the apply→verify loop on a
     mutable fake host, command-failure abort, and `LocalApplier` backup behaviour.
+  - Install/enable fixers added for auditd (`4.1.1.2`), host firewall (`3.5.1.3`), and
+    unattended-upgrades (`1.9`). The firewall fixer **allows SSH before** enabling default-deny
+    so a remote host can't lock itself out. 9 of 10 controls are now `implemented+fix`; only
+    `§2.2` stays audit-only (auto-disabling arbitrary services isn't a safe automatic action).
+    Tests grow to 71.
 
 ### Fixed
 - Corrected the SSH root-login control's CIS id from `5.2.8` to **`5.2.7`** to match the

@@ -14,9 +14,14 @@ import re
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, RunCommand, WriteFile
 
 AUTO_UPGRADES = "/etc/apt/apt.conf.d/20auto-upgrades"
+_AUTO_UPGRADES_CONTENT = (
+    'APT::Periodic::Update-Package-Lists "1";\n'
+    'APT::Periodic::Unattended-Upgrade "1";\n'
+)
 _DIRECTIVE = r'APT::Periodic::{key}\s+"(\d+)"\s*;'
 
 
@@ -49,6 +54,17 @@ def check(host: Host) -> Finding:
         found=f"update={update}, upgrade={upgrade}",
         expected="both directives = 1",
     )
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    return [
+        RunCommand(
+            ("apt-get", "install", "-y", "unattended-upgrades"),
+            "install unattended-upgrades",
+        ),
+        WriteFile(AUTO_UPGRADES, _AUTO_UPGRADES_CONTENT, mode=0o644),
+    ]
 
 
 def _directive(text: str, key: str) -> int | None:

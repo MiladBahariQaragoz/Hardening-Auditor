@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from ..host import Host
 from ..models import Finding, Severity
-from ..registry import control
+from ..registry import control, fixer
+from ..remediation import Action, RunCommand
 from ._systemd import active_state, enabled_state
 
 
@@ -39,3 +40,11 @@ def check(host: Host) -> Finding:
         found=f"active={active or 'unknown'}, enabled={enabled or 'unknown'}",
         expected="active + enabled",
     )
+
+
+@fixer(check)
+def fix(host: Host) -> list[Action]:
+    return [
+        RunCommand(("apt-get", "install", "-y", "auditd", "audispd-plugins"), "install auditd"),
+        RunCommand(("systemctl", "enable", "--now", "auditd"), "enable and start auditd"),
+    ]
