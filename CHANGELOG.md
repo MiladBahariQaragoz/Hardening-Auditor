@@ -15,5 +15,9 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   `docs/THREAT-MODEL.md`.
 - `reports/` directory for generated audit artifacts (git-ignored output).
 
+### Changed
+- Rewrote `README.md` as a product-facing project showcase (what the tool does, quick start,
+  example report, design, roadmap) instead of internal CV-planning notes.
+
 ### Notes
 - No controls implemented yet. See `docs/CONTROLS.md` for the planned catalogue.

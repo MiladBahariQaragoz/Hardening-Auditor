@@ -1,52 +1,102 @@
-# 01 — Linux Hardening Lab & CIS Auto-Auditor
+# Linux Hardening Auditor
 
-**Difficulty:** ⭐ (start here) · **Est. effort:** 2–3 weeks · **Repo name idea:** `linux-cis-auditor`
+A command-line tool that audits a Linux host against the [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
+and reports, control by control, where the system deviates from a secure baseline — with a
+severity, a clear explanation, and a remediation step for every finding. An optional, reversible
+`--fix` mode applies safe hardening automatically.
 
-## Why this project
-Every junior security CV needs to prove you understand *what a secure system looks like* and
-can *measure deviation from a baseline*. 30% of the analysed jobs ask for "IT security"
-fundamentals and 12% for "security audits" / "system hardening". This is the cheapest, fastest
-way to make those skills real — and it plays to your Python/Bash automation strength.
+> **Status:** early development. The architecture and control catalogue are in place; checks are
+> being implemented incrementally. See the [Roadmap](#roadmap) and [`docs/CONTROLS.md`](docs/CONTROLS.md).
 
-## Skills this proves (put on CV)
-- IT security fundamentals & **system hardening**
-- **Security auditing** against a recognised benchmark (CIS / BSI Grundschutz)
-- Linux administration & secure configuration
-- Security **automation** in Python/Bash
+## What it does
 
-## Scope / what you build
-A tool that audits a Linux host against the **CIS Benchmark** (or BSI IT-Grundschutz),
-reports pass/fail per control, and can optionally **remediate**.
+- **Audits** SSH configuration, password policy, the audit daemon, the host firewall, file
+  permissions on sensitive files, unused services, and kernel `sysctl` hardening — each mapped to
+  a real CIS control ID.
+- **Scores** the host and groups findings by severity so the most important fixes surface first.
+- **Reports** to clean Markdown, HTML, or JSON — a deliverable you can hand to someone, not just
+  terminal output.
+- **Remediates** safely: `--fix` backs up each file before changing it, runs idempotently, and
+  verifies the control passes afterward. `--dry-run` shows exactly what would change first.
 
-1. **Lab:** 2 VMs (Ubuntu + Debian) in VirtualBox/UTM, one left default, one hardened.
-2. **Auditor (Python):** checks 30–50 real controls — SSH config (`PermitRootLogin`, key-only
-   auth), password policy, `auditd` enabled, firewall (ufw/nftables) on, unattended-upgrades,
-   file permissions on `/etc/shadow`, disabled unused services, kernel `sysctl` hardening.
-3. **Report:** generates a clean Markdown/HTML report with score, severity, and remediation
-   steps per failed control — this is the "audit deliverable" recruiters can see.
-4. **Remediation mode:** `--fix` applies safe fixes idempotently (with backup + dry-run).
-5. **Bonus:** compare your auditor's output against **Lynis** and **OpenSCAP** and document
-   the diff (shows you know the industry-standard tools, not just your own).
+## Why
 
-## Definition of done
-- [ ] Public repo with README showing a before/after audit score (e.g. 41% → 92%).
-- [ ] Screenshots of the hardened-vs-default report.
-- [ ] At least 30 controls implemented, mapped to CIS control IDs.
-- [ ] `--dry-run`, `--fix`, and Markdown report output all work.
-- [ ] A short "Threat model & rationale" section: *why* each control matters.
+Most security incidents start with a misconfiguration, not an exotic exploit. This tool measures
+the gap between a real host and a recognised hardening baseline, and makes closing that gap a
+one-command, auditable operation. Every check is tied to the threat it mitigates — see
+[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md).
 
-## Build order
-1. Stand up the two VMs; snapshot them.
-2. Run **Lynis** manually first — learn the vocabulary, note ~20 findings.
-3. Re-implement 30+ of those checks in your own auditor.
-4. Add the reporting layer, then the remediation layer.
-5. Document the CIS mapping + your audit methodology.
+## Quick start
 
-## Learning resources
-- CIS Benchmarks (free PDF after sign-up), BSI IT-Grundschutz Kompendium (German, CV-relevant).
-- `Lynis`, `OpenSCAP`/`oscap`, `auditd` docs.
-- TryHackMe "Linux Fundamentals" + "Hardening" rooms.
+```bash
+# Audit the current host (read-only) and print a summary
+python -m auditor audit
 
-## CV bullet (target)
-> Built an open-source Linux hardening auditor that scores hosts against 40+ CIS controls and
-> auto-remediates findings; reduced a default Ubuntu image's audit failures by ~80%.
+# Write a Markdown report to reports/
+python -m auditor audit --report md
+
+# Preview what remediation would change, without touching anything
+python -m auditor fix --dry-run
+
+# Apply safe remediations (backs up every file it changes)
+python -m auditor fix
+```
+
+> `audit` never modifies the system. Only `fix` makes changes, and only with explicit consent.
+
+## Example report
+
+```
+Linux Hardening Audit — ubuntu-host — 2026-06-23
+Score: 41%  (14 / 34 controls passing)
+
+HIGH
+  [FAIL] 5.2  SSH PermitRootLogin    found "yes", expected "no"
+  [FAIL] 6.1  /etc/shadow perms      found 0644, expected 0640
+  [PASS] 4.1  auditd enabled
+MEDIUM
+  [FAIL] 3.3  sysctl net.ipv4.*      3 of 7 parameters not hardened
+  ...
+```
+
+## Design
+
+The tool is built so that adding a new control never means editing the engine. Each control is a
+small, self-registering module under `auditor/checks/`; the engine discovers and runs whatever is
+registered and emits a uniform result that the reporters render. The full reasoning behind the
+architecture is recorded as Architecture Decision Records in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+```
+auditor/
+├── cli.py            # entrypoint: audit | fix | report
+├── engine.py         # discovers + runs checks, collects results
+├── registry.py       # control discovery
+├── models.py         # Control / CheckResult / Severity dataclasses
+├── reporters/        # markdown · html · json
+├── remediation.py    # backup → dry-run → fix → verify
+└── checks/           # one self-contained module per control
+docs/                 # control catalogue, threat model, decision log
+```
+
+## Roadmap
+
+- [ ] 30+ CIS controls implemented and mapped to control IDs (catalogue seeded in `docs/CONTROLS.md`)
+- [ ] Markdown / HTML / JSON reporters
+- [ ] `--dry-run` and `--fix` remediation with backups
+- [ ] Before/after demo on a default vs. hardened VM, with screenshots
+- [ ] Comparison of results against [Lynis](https://cisofy.com/lynis/) and OpenSCAP
+
+## Tech
+
+Python 3.11+, standard library first. Linting with `ruff`, tests with `pytest`. No external
+dependencies required to run an audit.
+
+## References
+
+- [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks) ·
+  [BSI IT-Grundschutz](https://www.bsi.bund.de/dok/it-grundschutz-kompendium)
+- [Lynis](https://cisofy.com/lynis/) · [OpenSCAP](https://www.open-scap.org/)
+
+## License
+
+MIT (see `LICENSE`).
