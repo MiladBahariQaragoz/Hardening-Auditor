@@ -75,3 +75,27 @@ add a new ADR that supersedes the old one (don't edit history) — that is what 
   auto-reversible (used for reload/enable/install) — accepted, and offset by the kept backups
   and the verify step. Verifying state changed by the kernel (e.g. `sysctl --system` updating
   `/proc/sys`) is covered on a live host, not by the in-memory fake.
+
+## ADR-0006 — Apply re-derives each fixer against the live host, not the up-front plan
+- **Date:** 2026-06-24
+- **Status:** Accepted
+- **Context:** Under ADR-0005, `fix` plans up front and `apply` executes that plan. Several
+  controls legitimately edit the *same* file: e.g. `5.5.1.1` (`PASS_MAX_DAYS`) and `5.5.1.2`
+  (`PASS_MIN_DAYS`) both rewrite `/etc/login.defs` via a whole-file `WriteFile`. Because each
+  `WriteFile` captured the file's content **at plan time** (before any fix ran), applying them
+  in sequence meant the second write — built from the original file — silently clobbered the
+  first fixer's change. The first control verified, then got reverted; only the last writer of
+  a shared file survived. This surfaced during the GCP demo run.
+- **Decision:** `apply` re-derives each control's actions by calling its fixer **again at apply
+  time**, against the live host (which already reflects earlier fixers' writes), rather than
+  replaying the stale `ControlPlan.actions`. Fixers are pure, read-only, and cheap (ADR-0005),
+  so re-running them is safe and side-effect-free. The up-front plan is still what `--dry-run`
+  renders — the read-only preview is unchanged. `LocalApplier.backup` now also skips re-copying
+  a file already backed up earlier in the same run, so the kept backup is the true pre-run
+  original even when two controls touch one file.
+- **Consequences:** Order-independent correctness for controls sharing a file; no per-control
+  special-casing in the engine (ADR-0001 preserved). The trade-off: the actions actually
+  applied are re-computed, so in principle they could differ from the dry-run preview if the
+  host changed between plan and apply — acceptable, since re-deriving against current truth is
+  *more* correct, and the verify step (ADR-0005) still gates success. Tests cover both the
+  shared-file case (`5.5.1.1` + `5.5.1.2` both verify) and the command-failure abort path.

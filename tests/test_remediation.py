@@ -7,7 +7,6 @@ from pathlib import Path
 from auditor import engine, remediation
 from auditor.host import FileStat
 from auditor.models import Status
-from auditor.remediation import RunCommand, SetMode, WriteFile
 from tests.fakes import FakeApplier, FakeHost
 
 
@@ -74,24 +73,39 @@ def test_apply_unattended_upgrades_installs_and_verifies(catalogue):
     assert any(argv[:3] == ("apt-get", "install", "-y") for argv in applier.commands)
 
 
+def test_two_controls_editing_same_file_both_verify(catalogue):
+    # Regression for the GCP-demo bug: 5.5.1.1 and 5.5.1.2 both rewrite /etc/login.defs.
+    # With up-front planning the second write clobbered the first with stale content; apply must
+    # re-derive each fixer against the live host so both end up correct.
+    host = FakeHost(files={"/etc/login.defs": "PASS_MAX_DAYS 99999\nPASS_MIN_DAYS 0\n"})
+    plans = remediation.plan(host, engine.run(host).results)
+    applier = FakeApplier(host)
+
+    outcomes = remediation.apply(host, applier, plans)
+    by_id = {o.control.id: o for o in outcomes}
+    assert by_id["5.5.1.1"].verified is Status.PASS
+    assert by_id["5.5.1.2"].verified is Status.PASS
+    # Final file must satisfy both directives at once.
+    final = host._files["/etc/login.defs"]
+    assert "PASS_MAX_DAYS\t365" in final
+    assert "PASS_MIN_DAYS\t1" in final
+
+
 def test_failed_command_aborts_and_reports_error(catalogue):
-    host = FakeHost(stats={"/etc/shadow": FileStat(0o644, 1000, 50, "bob", "staff")})
+    # 1.9's fixer runs `apt-get install ...`; when that command fails, apply must abort that
+    # control and record the error rather than reporting it as fixed. (Actions are re-derived
+    # from the live host at apply time, so the failure path is exercised through a real fixer.)
+    host = FakeHost()
 
     class FailingApplier(FakeApplier):
         def run(self, argv):
             return 1, "boom"
 
-    # Use a plan with a RunCommand so the failure path is exercised.
-    plan = [
-        remediation.ControlPlan(
-            control=next(p.control for p in remediation.plan(host, engine.run(host).results)
-                         if p.control.id == "6.1.5"),
-            actions=[SetMode("/etc/shadow", 0o640), RunCommand(("false",), "boom")],
-        )
-    ]
-    outcomes = remediation.apply(host, FailingApplier(host), plan)
-    assert outcomes[0].error
-    assert not outcomes[0].ok
+    plans = remediation.plan(host, engine.run(host).results)
+    outcomes = remediation.apply(host, FailingApplier(host), plans)
+    uu = next(o for o in outcomes if o.control.id == "1.9")
+    assert uu.error
+    assert not uu.ok
 
 
 def test_local_applier_backs_up_before_writing(tmp_path: Path):

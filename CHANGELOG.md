@@ -79,6 +79,13 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   - 31 of 32 controls are `implemented+fix`. Tests grow to 146.
 
 ### Fixed
+- **Two controls editing the same file no longer clobber each other.** `5.5.1.1`
+  (`PASS_MAX_DAYS`) and `5.5.1.2` (`PASS_MIN_DAYS`) both rewrite `/etc/login.defs`; the second
+  fixer's whole-file `WriteFile`, built from content captured at *plan* time, used to overwrite
+  the first fixer's change, so only the last writer survived (caught during the GCP demo run).
+  `apply` now re-derives each control's actions against the **live host** at apply time, so each
+  fixer sees the previous one's edits. `LocalApplier.backup` also keeps the first backup of a
+  file touched twice in one run, so the saved copy is the true pre-run original (ADR-0006).
 - Lowered the required Python from 3.11 to **3.10** to match Ubuntu 22.04's default interpreter
   (the audit target). Verified the full package runs on Python 3.10.12 in a real Ubuntu 22.04
   (WSL) environment — a clean audit produced accurate findings from live `/proc/sys`,

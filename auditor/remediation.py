@@ -166,6 +166,10 @@ class LocalApplier:
             return None
         # Mirror the absolute path under the backup root so collisions can't happen.
         dest = self.backup_dir / src.resolve().relative_to(src.anchor)
+        if dest.exists():
+            # Already backed up earlier in this run (another fixer touched the same file);
+            # keep the first copy so the backup is the true pre-run original.
+            return str(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
         log.info("backed up %s -> %s", path, dest)
@@ -257,12 +261,21 @@ def apply(
     applier: Applier,
     plans: Sequence[ControlPlan],
 ) -> list[FixOutcome]:
-    """Apply each plan with backups, then re-run the control's check to verify."""
+    """Apply each plan with backups, then re-run the control's check to verify.
+
+    Each control's actions are **re-derived from the live host at apply time**, not taken from
+    the up-front plan. This is essential when two controls edit the same file (e.g. several
+    login.defs directives): re-planning lets each fixer see the previous fixer's changes, so the
+    second write doesn't clobber the first with stale content. (The up-front plan still drives
+    the read-only dry-run preview.)
+    """
     outcomes: list[FixOutcome] = []
     for cp in plans:
         outcome = FixOutcome(control=cp.control)
+        fix = fixer_for(cp.control.id)
+        actions = list(fix(host)) if fix is not None else list(cp.actions)
         try:
-            for action in cp.actions:
+            for action in actions:
                 _apply_action(applier, action, outcome)
                 outcome.applied.append(action)
         except RemediationError as exc:
