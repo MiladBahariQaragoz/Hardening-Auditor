@@ -1,0 +1,267 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- packages -------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+% --- colours & styling ----------------------------------------------------
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{ok}{HTML}{1B7F3B}
+\definecolor{bad}{HTML}{B00020}
+\definecolor{codebg}{HTML}{F4F6F8}
+\definecolor{rule}{HTML}{C9D3DD}
+
+\titleformat{\section}{\Large\bfseries\color{accent}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{accent}}{\thesubsection}{0.6em}{}
+\setlist[itemize]{leftmargin=1.3em,itemsep=2pt,topsep=2pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{accent}Linux Hardening Auditor}
+\rhead{\small\color{accent}Project Closeout Report}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\lstdefinestyle{console}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{rule},
+  framesep=6pt,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+}
+
+\newcommand{\pass}{\textcolor{ok}{\textbf{PASS}}}
+\newcommand{\fail}{\textcolor{bad}{\textbf{FAIL}}}
+
+% --- title ----------------------------------------------------------------
+\title{\vspace{-1.2cm}\color{accent}\Huge\textbf{Linux Hardening Auditor}\\[4pt]
+\Large A CIS-mapped audit \& safe-remediation tool for Ubuntu 22.04\\[10pt]
+\large\normalcolor Project Closeout Report}
+\author{Milad Bahari Qaragoz}
+\date{24 June 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+% =========================================================================
+\section{Executive summary}
+The Linux Hardening Auditor is a Python tool that audits a Linux host against the
+\textbf{CIS Ubuntu 22.04 LTS Benchmark v1.0.0} (with BSI IT-Grundschutz alignment where
+relevant), reports pass/fail per control with severity and remediation, and can optionally and
+\emph{reversibly} fix what it finds. It is read-only by default; every mutating action backs up
+the file it touches first and re-verifies the control afterwards.
+
+The tool was validated end-to-end on a stock \textbf{Ubuntu 22.04.5 LTS} cloud host. A default
+image scored \textbf{53\,\%}; after a single \texttt{fix} run it scored \textbf{100\,\%}, with
+all 15 remediable controls remediated \emph{and} independently re-verified against the live host.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l c c}
+\toprule
+\textbf{Stage} & \textbf{Score} & \textbf{Controls passing} \\
+\midrule
+Before --- default Ubuntu 22.04 image & \textcolor{bad}{\textbf{53\,\%}} & 17 / 32 \\
+After --- single \texttt{fix} run, re-audited & \textcolor{ok}{\textbf{100\,\%}} & 32 / 32 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =========================================================================
+\section{Design principles}
+The codebase is judged against three non-negotiable principles, chosen so the project reads like
+the work of someone who builds auditable, maintainable security tooling:
+
+\begin{itemize}
+  \item \textbf{Scalable.} Controls are data-driven, self-registering plugins. Adding control
+        \#33 means writing one self-contained check module and nothing else --- the engine,
+        reporters, and remediator never grow per control.
+  \item \textbf{Traceable.} Every control maps to a real CIS control ID. A reader can go from a
+        CV bullet $\rightarrow$ report line $\rightarrow$ control ID $\rightarrow$ the exact
+        check code $\rightarrow$ the written rationale, with no missing link. Six Architecture
+        Decision Records capture \emph{why}, not just what.
+  \item \textbf{Debuggable.} Structured logging at every check, deterministic output ordered by
+        control ID, dry-run by default, and clear ``expected vs.\ found'' failure messages.
+\end{itemize}
+
+% =========================================================================
+\section{Architecture}
+The engine discovers and runs whatever checks are registered and emits a uniform result that the
+reporters render; it never names a control.
+
+\begin{lstlisting}[style=console]
+auditor/
+  cli.py          # entrypoint: audit | fix
+  engine.py       # discovers + runs checks, collects results
+  registry.py     # control + fixer discovery (@control / @fixer)
+  models.py       # Control / CheckResult / Severity / Status
+  host.py         # injected read-only host (LocalHost / FakeHost)
+  reporters/      # console - markdown - html - json
+  remediation.py  # backup -> dry-run -> apply -> verify
+  checks/         # ONE self-registering module per control
+\end{lstlisting}
+
+\noindent\textbf{Adding a control} is a five-step, single-file path: create
+\texttt{checks/<id>\_<slug>.py}, let it self-register via the \texttt{@control} decorator, add a
+catalogue row and a threat-model rationale, add a test, add a changelog line. The host is
+injected, so every check is unit-testable on a non-Linux dev box through a \texttt{FakeHost}.
+
+% =========================================================================
+\section{Control catalogue}
+The catalogue covers \textbf{32 controls} spanning SSH hardening, kernel \texttt{sysctl} network
+hardening, file permissions, password policy, the host firewall, auditing, and automatic
+security updates.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{l c p{8.2cm}}
+\toprule
+\textbf{Severity} & \textbf{Count} & \textbf{Examples} \\
+\midrule
+High   & 7  & SSH \texttt{PermitRootLogin no}, host firewall active, auditd enabled, \texttt{/etc/shadow} mode \\
+Medium & 23 & \texttt{sysctl} network hardening, SSH MACs/KEX/MaxAuthTries, password min-length \& expiry \\
+Low    & 2  & cron daemon active, password-expiry warning age \\
+\midrule
+\multicolumn{2}{l}{\textbf{Total: 32}} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =========================================================================
+\section{Remediation engine}
+Remediation is split into three independently testable parts (ADR-0005):
+
+\begin{enumerate}[leftmargin=1.5em,itemsep=2pt]
+  \item A control's \textbf{fixer} is a pure function \texttt{fix(host) -> [Action]}; it only
+        \emph{reads} the host and returns a declarative plan, so \texttt{--dry-run} is ``plan,
+        then print'' with zero side effects.
+  \item An \textbf{Applier} performs the side effects, \textbf{backing up every file before it
+        changes it}. SSH changes are written as drop-in files and validated with
+        \texttt{sshd -t} \emph{before} the daemon is reloaded, so a bad config can never lock
+        you out.
+  \item After a control's actions are applied, the control's \textbf{own check is re-run to
+        verify} --- a fix that does not make the check pass is reported as failed, not assumed.
+\end{enumerate}
+
+\subsection{The shared-file bug and its fix (ADR-0006)}
+Two controls legitimately edit the same file: \texttt{5.5.1.1} (\texttt{PASS\_MAX\_DAYS}) and
+\texttt{5.5.1.2} (\texttt{PASS\_MIN\_DAYS}) both rewrite \texttt{/etc/login.defs}. Because each
+fixer captured the file's content \emph{at plan time}, applying them in sequence let the second
+whole-file write silently clobber the first fixer's change --- only the last writer of a shared
+file survived. This surfaced during the cloud demo run.
+
+\textbf{Fix:} \texttt{apply} now re-derives each control's actions by calling its fixer again
+against the \emph{live} host at apply time, so every fixer sees the previous one's edits. The
+backup layer additionally keeps the \emph{first} backup of a file touched twice in one run, so
+the saved copy is the true pre-run original. The up-front plan still drives the read-only
+\texttt{--dry-run} preview. Both the shared-file case and the command-failure abort path are
+covered by regression tests.
+
+% =========================================================================
+\section{Real-host verification}
+\subsection{Method}
+The tool was run end-to-end on a freshly created \textbf{Ubuntu 22.04.5 LTS} Google Compute
+Engine VM (\texttt{e2-micro}, Python 3.10.12) --- the exact distribution and interpreter the
+benchmark targets. The audit read live \texttt{sshd -T} output, \texttt{/proc/sys},
+\texttt{/etc/login.defs}, and real file modes; it was reached over an IAP tunnel with no public
+IP, and given outbound-only internet via Cloud NAT so package-installing fixers could run.
+
+\subsection{Before --- default image (53\,\%, 17/32)}
+\begin{lstlisting}[style=console]
+Linux Hardening Audit -- lha-audit-vm -- 2026-06-24T08:56:21
+Score: 53%  (17 / 32 controls passing)
+
+HIGH
+  [FAIL] 3.5.1.3  Host firewall active        found "ufw inactive"
+  [FAIL] 4.1.1.2  auditd enabled and active   found "active=inactive"
+  [FAIL] 5.2.7    SSH PermitRootLogin disabled found "without-password"
+MEDIUM
+  [FAIL] 1.5.4    Core dumps restricted        fs.suid_dumpable=2 (want 0)
+  [FAIL] 3.3      Kernel network hardening     1 of 7 not hardened
+  [FAIL] 5.2.12   SSH X11Forwarding disabled   found "yes"
+  [FAIL] 5.2.14   SSH strong MACs only         weak MACs present
+  [FAIL] 5.2.16   SSH AllowTcpForwarding off   found "yes"
+  [FAIL] 5.2.18   SSH MaxAuthTries <= 4        found "6"
+  [FAIL] 5.2.21   SSH LoginGraceTime <= 60s    found "120"
+  [FAIL] 5.4.1    Password min length >= 14    pwquality.conf missing
+  [FAIL] 5.5.1.1  Password expiration <= 365   PASS_MAX_DAYS=99999
+  [FAIL] 5.5.1.2  Min days between changes >=1 PASS_MIN_DAYS=0
+  ... (15 failing in total)
+\end{lstlisting}
+
+\subsection{Apply --- 15 controls remediated and verified}
+\begin{lstlisting}[style=console]
+Remediation applied (backups in backups/20260624-085815/):
+  [OK] 1.5.4   Core dumps restricted          -- now passing
+  [OK] 3.3     Kernel network hardening        -- now passing
+  [OK] 3.5.1.3 Host firewall active            -- now passing
+  [OK] 4.1.1.2 auditd enabled and active       -- now passing
+  [OK] 5.1.2   /etc/crontab permissions        -- now passing
+  [OK] 5.2.1   sshd_config permissions         -- now passing
+  [OK] 5.2.7   SSH PermitRootLogin disabled    -- now passing
+  [OK] 5.2.12  SSH X11Forwarding disabled      -- now passing
+  [OK] 5.2.14  SSH strong MACs only            -- now passing
+  [OK] 5.2.16  SSH AllowTcpForwarding disabled -- now passing
+  [OK] 5.2.18  SSH MaxAuthTries <= 4           -- now passing
+  [OK] 5.2.21  SSH LoginGraceTime <= 60s       -- now passing
+  [OK] 5.4.1   Password minimum length >= 14   -- now passing
+  [OK] 5.5.1.1 Password expiration <= 365 days -- now passing
+  [OK] 5.5.1.2 Min days between changes >= 1   -- now passing
+15/15 control(s) remediated and verified.
+\end{lstlisting}
+
+\noindent The two \texttt{/etc/login.defs} controls (\texttt{5.5.1.1} and \texttt{5.5.1.2})
+\textbf{both} verify, and \texttt{login.defs} appears in the backup tree exactly once ---
+confirming the ADR-0006 fix on a real host. After the run, a fresh read-only audit reported
+\textbf{100\,\% (32/32)}.
+
+% =========================================================================
+\section{Quality, testing \& reproducibility}
+\begin{itemize}
+  \item \textbf{147 automated tests} (\texttt{pytest}), all OS-independent via \texttt{FakeHost},
+        covering each check, the engine, the registry, every reporter, and the remediation
+        plan/apply/verify loop --- including the shared-file regression.
+  \item \textbf{Deterministic output} ordered by control ID, so report diffs are meaningful.
+  \item \textbf{Standard library only} at runtime; \texttt{ruff} for lint/format; Python 3.10+
+        to match Ubuntu 22.04's default interpreter.
+  \item \textbf{Maintained documentation discipline:} every behaviour change updates
+        \texttt{README}, \texttt{CHANGELOG}, the decision log, the control catalogue, and the
+        threat model in the same commit.
+\end{itemize}
+
+% =========================================================================
+\section{Project status}
+\textbf{Closed.} The tool audits 32 CIS-mapped controls, remediates the 15 that are safely
+auto-fixable, and has been verified before/after on a real Ubuntu 22.04 host (53\,\% $\rightarrow$
+100\,\%). Possible future work, none blocking: cross-checking results against Lynis and OpenSCAP,
+and broadening the catalogue beyond the current 32 controls.
+
+\vspace{0.6em}
+\noindent\textbf{Run it:}
+\begin{lstlisting}[style=console]
+python -m auditor audit              # read-only audit, console summary
+python -m auditor audit --report md  # write a Markdown report
+python -m auditor fix --dry-run      # preview changes, touch nothing
+python -m auditor fix                # apply safe fixes, with backups
+\end{lstlisting}
+
+\vspace{0.4em}
+\noindent\small\textcolor{gray}{Generated as the closeout artifact for the Linux Hardening
+Auditor portfolio project. Source: \texttt{docs/closeout-report.tex}.}
+
+\end{document}
