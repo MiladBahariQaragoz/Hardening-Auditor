@@ -86,6 +86,10 @@ this project aims to follow [Semantic Versioning](https://semver.org/).
   `apply` now re-derives each control's actions against the **live host** at apply time, so each
   fixer sees the previous one's edits. `LocalApplier.backup` also keeps the first backup of a
   file touched twice in one run, so the saved copy is the true pre-run original (ADR-0006).
+  **Verified end-to-end on a stock Ubuntu 22.04.5 LTS VM (Python 3.10.12):** a default image
+  scored **53 % (17/32)**; `fix` remediated and re-verified all 15 fixable controls — including
+  `5.5.1.1` and `5.5.1.2` both rewriting `/etc/login.defs` and both passing — taking the re-audit
+  to **100 % (32/32)**, with `login.defs` backed up exactly once.
 - Lowered the required Python from 3.11 to **3.10** to match Ubuntu 22.04's default interpreter
   (the audit target). Verified the full package runs on Python 3.10.12 in a real Ubuntu 22.04
   (WSL) environment — a clean audit produced accurate findings from live `/proc/sys`,

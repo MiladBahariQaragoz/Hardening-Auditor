@@ -47,17 +47,36 @@ python -m auditor fix
 ## Example report
 
 ```
-Linux Hardening Audit — ubuntu-host — 2026-06-23
-Score: 41%  (14 / 34 controls passing)
+Linux Hardening Audit — lha-audit-vm — 2026-06-24T08:56:21
+Score: 53%  (17 / 32 controls passing)
 
 HIGH
-  [FAIL] 5.2  SSH PermitRootLogin    found "yes", expected "no"
-  [FAIL] 6.1  /etc/shadow perms      found 0644, expected 0640
-  [PASS] 4.1  auditd enabled
+  [FAIL] 3.5.1.3  Host firewall active    found "ufw inactive", expected "active firewall"
+  [FAIL] 4.1.1.2  auditd enabled and active    found "active=inactive", expected "active + enabled"
+  [FAIL] 5.2.7    SSH PermitRootLogin disabled    found "without-password", expected "no"
+  [PASS] 6.1.5    /etc/shadow permissions <= 0640
 MEDIUM
-  [FAIL] 3.3  sysctl net.ipv4.*      3 of 7 parameters not hardened
+  [FAIL] 3.3      Kernel network hardening (sysctl)    found "1 of 7 not hardened", expected "all 7 hardened"
+  [FAIL] 5.5.1.1  Password expiration <= 365 days    found "PASS_MAX_DAYS=99999", expected "<= 365"
   ...
 ```
+
+## Before / after (real Ubuntu 22.04 host)
+
+Run end-to-end on a stock **Ubuntu 22.04.5 LTS** Google Compute Engine VM (Python 3.10.12),
+auditing live `sshd -T`, `/proc/sys`, `/etc/login.defs`, and real file modes:
+
+| Stage | Score | Passing |
+|-------|-------|---------|
+| **Before** (default image) | **53 %** | 17 / 32 |
+| `fix` (15 controls remediated + verified) | — | — |
+| **After** (re-audit) | **100 %** | 32 / 32 |
+
+Every remediated control was re-checked against the live host before being reported as fixed,
+each changed file was backed up first, and each SSH change was validated with `sshd -t` before
+the daemon was reloaded — so a bad config can never lock you out. This includes the two controls
+that both rewrite `/etc/login.defs` (`5.5.1.1` + `5.5.1.2`): both verify simultaneously, the case
+that motivated [ADR-0006](docs/DECISIONS.md).
 
 ## Design
 
@@ -83,7 +102,7 @@ docs/                 # control catalogue, threat model, decision log
 - [x] 30+ CIS controls implemented and mapped to control IDs (32 in `docs/CONTROLS.md`)
 - [x] Markdown / HTML / JSON reporters (plus a severity-grouped console summary)
 - [x] `fix --dry-run` and `fix` remediation with per-file backups and post-fix verification
-- [ ] Before/after demo on a default vs. hardened VM, with screenshots
+- [x] Before/after demo on a default Ubuntu 22.04 VM (53 % → 100 %; see above)
 - [ ] Comparison of results against [Lynis](https://cisofy.com/lynis/) and OpenSCAP
 
 ## Tech
