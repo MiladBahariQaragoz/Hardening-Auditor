@@ -78,6 +78,13 @@ the daemon was reloaded — so a bad config can never lock you out. This include
 that both rewrite `/etc/login.defs` (`5.5.1.1` + `5.5.1.2`): both verify simultaneously, the case
 that motivated [ADR-0006](docs/DECISIONS.md).
 
+> **What "100 %" means here.** The score is **relative to this tool's own catalogue of 32
+> checks** — it reads "all 32 implemented controls pass," not "the host is fully CIS-compliant"
+> or "the host is secure." The full CIS Ubuntu 22.04 Benchmark defines *hundreds* of
+> recommendations; this project implements a deliberate, well-documented subset (see
+> [`docs/CONTROLS.md`](docs/CONTROLS.md)). A 100 % score is a statement about *these* controls,
+> not an absolute security guarantee, and should be read alongside the catalogue that defines it.
+
 ## Design
 
 The tool is built so that adding a new control never means editing the engine. Each control is a

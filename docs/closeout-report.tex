@@ -82,6 +82,14 @@ After --- single \texttt{fix} run, re-audited & \textcolor{ok}{\textbf{100\,\%}}
 \end{tabular}
 \end{center}
 
+\paragraph{How to read the score.} These percentages are measured \emph{against this tool's own
+catalogue of 32 checks}, not against the complete benchmark. ``100\,\%'' means ``all 32
+implemented controls pass'' --- it is \textbf{not} a claim of full CIS compliance or of absolute
+host security. The published CIS Ubuntu 22.04 Benchmark defines several hundred recommendations;
+this project implements a deliberate, documented subset (\S4, and \texttt{docs/CONTROLS.md}). The
+result should always be read alongside the catalogue that defines it: it states that the controls
+\emph{this tool knows how to check} are satisfied, and nothing beyond that.
+
 % =========================================================================
 \section{Design principles}
 The codebase is judged against three non-negotiable principles, chosen so the project reads like
@@ -248,8 +256,10 @@ confirming the ADR-0006 fix on a real host. After the run, a fresh read-only aud
 \section{Project status}
 \textbf{Closed.} The tool audits 32 CIS-mapped controls, remediates the 15 that are safely
 auto-fixable, and has been verified before/after on a real Ubuntu 22.04 host (53\,\% $\rightarrow$
-100\,\%). Possible future work, none blocking: cross-checking results against Lynis and OpenSCAP,
-and broadening the catalogue beyond the current 32 controls.
+100\,\% \emph{of those 32 controls}). The most valuable next step is precisely to grow that
+catalogue: the 32 controls are a curated subset of the full benchmark, so broadening coverage ---
+and cross-checking results against established scanners such as Lynis and OpenSCAP --- is what
+would turn a high score on \emph{this} catalogue into a stronger statement about the host overall.
 
 \vspace{0.6em}
 \noindent\textbf{Run it:}
